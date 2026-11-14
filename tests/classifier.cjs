@@ -1,0 +1,10 @@
+'use strict';
+const fs=require('fs'),path=require('path'),vm=require('vm'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'..');vm.runInThisContext(fs.readFileSync(path.join(root,'outputs/Politifree-Chrome/classifier.js'),'utf8'));
+const political=['Mamdani Explains Socialism to Theo Von','Can Trump run again in 2028? Here is what you need to know','Trump’s 32-Day Midterm Blitz Begins: Pretend I’m On The Ballot','These A-list celebs backed Kamala Harris. But none have commented on Trump’s historic win.','Polls Put Too Much Stock in the Turnout of Younger Voters','The American Presidential Election of 1856','President Obama reflects on Election Night 2008','U.S. election night in 60 secs','Zohran Mamdani hits back at Andrew Cuomo during mayoral debate'];
+const ordinary=['World of Warcraft raid guide','Pittsburgh Penguins hockey highlights','Pop Punk Lives!','Office politics career advice','Vote for your favorite sourdough bread','Trump cards in bridge explained','Class president campaign tips','Political factions in my strategy game','History of socialism textbook review','Theo Von visits a bakery'];
+political.push('The MAGA kingmaker is having second thoughts #shorts', 'GOP strategists rethink their approach', 'Democratic Party leadership faces criticism');
+ordinary.push('Pathfinder Kingmaker walkthrough', 'Met This Kid On Tour... But Didn’t Expect This', 'You want to go pro when you’re older?', 'Maga visits the bakery', 'The kingmaker is having second thoughts in our chess game');
+for(const text of political)assert.equal(PolitifreeClassifier.classify(text,'precise').political,true,text);
+for(const text of ordinary)assert.equal(PolitifreeClassifier.classify(text,'precise').political,false,text);
+console.log(`PASS ${political.length} reproduced political social headlines and ${ordinary.length} ordinary controls`);

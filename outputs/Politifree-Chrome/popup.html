@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Politifree</title><link rel="stylesheet" href="ui.css"><link rel="icon" href="icon32.png"></head>
+<body class="popup"><img id="brand-logo" src="logo.png" alt="Politifree">
+<label class="toggle"><span>Politifree <strong id="enabled-label">On</strong></span><input id="enabled" type="checkbox" role="switch" aria-label="Enable Politifree"></label>
+<p id="engine-status" class="status" role="status">Checking filtering…</p><p id="page-status" class="muted" role="status"></p>
+<button id="pause-site" class="secondary" disabled>Pause on this website</button>
+<button id="show-removed" class="secondary" disabled>Show removed items</button>
+<button id="report" class="secondary">Report a filtering mistake</button>
+<button id="options" class="link">Settings</button>
+<details><summary>Advanced</summary><p class="muted">Audio screening delays this tab’s sound while checking it. Start it only when you want delayed playback.</p><button id="audio-toggle" class="secondary">Start audio screening</button><p id="audio-status" role="status"></p></details>
+<script src="popup.js"></script></body></html>

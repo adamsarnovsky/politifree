@@ -1,0 +1,26 @@
+name: Filtering mistake
+description: Report missed politics or an incorrect removal. Reports do not automatically change filters.
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: What happened?
+      options:
+        - Political content stayed visible
+        - Nonpolitical content was removed
+    validations:
+      required: true
+  - type: textarea
+    id: report
+    attributes:
+      label: Redacted report and reproduction steps
+      description: Paste the JSON from the extension, or provide a public URL, version, expected result and explanation. Do not include private posts, account details, tokens or private screenshots.
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Public disclosure
+      options:
+        - label: I reviewed this report and consent to publishing its contents publicly.
+          required: true

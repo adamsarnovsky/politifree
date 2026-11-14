@@ -1,0 +1,15 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Politifree reports</title><link rel="stylesheet" href="ui.css"><link rel="icon" href="icon32.png"></head>
+<body class="options"><main><img id="brand-logo" src="logo.png" alt="Politifree"><h1>Help improve filtering</h1>
+<p>Reports are proposals, not automatic blocks. A maintainer reviews each report and tests any change before it reaches everyone.</p>
+<label for="kind">What went wrong?</label><select id="kind"><option value="missed">Political content stayed visible</option><option value="false-removal">Nonpolitical content was removed</option></select>
+<button id="load" class="secondary">Choose an item from the page</button><select id="items" aria-label="Page items"><option value="">No items loaded</option></select>
+<p>Page items stay on this computer until you choose to share. For a private post, omit names and identifying details. No screenshots, audio, images, or browsing history are collected.</p>
+<label for="url">Public content URL (optional)</label><input id="url" type="url" size="65" placeholder="https://…">
+<label for="text">Relevant text you agree to share (optional)</label><textarea id="text" rows="5" maxlength="1000"></textarea>
+<label for="notes">What should happen, and why?</label><textarea id="notes" rows="3" maxlength="1500"></textarea>
+<label><input id="consent" type="checkbox"> I reviewed the preview below. It contains no private information I do not want to publish. Opening a GitHub draft shares these fields with GitHub before I submit the issue.</label>
+<h2>Exact report preview</h2><pre id="preview" style="white-space:pre-wrap;overflow-wrap:anywhere"></pre>
+<button id="download" class="secondary">Save report JSON</button><button id="submit" class="secondary">Review on GitHub (public)</button><p id="report-status" role="status"></p>
+<h2>Reviewed community filters</h2><label><input id="updates" type="checkbox"> Check automatically for reviewed filter updates</label><p id="revision"></p>
+<button id="update" class="secondary">Check for updates</button><button id="rollback" class="secondary">Restore previous filters</button><p id="update-status" role="status"></p>
+<script src="community-config.js"></script><script src="report.js"></script></main></body></html>

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+node_modules/
+dist/
+*.pem
+*.key
+*.env
+*.log
+*.pid
+pairing-token*
+app.politifree.engine.json
+.cache/

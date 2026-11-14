@@ -1,0 +1,10 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Politifree settings</title><link rel="stylesheet" href="ui.css"><link rel="icon" href="icon32.png"></head>
+<body class="options"><main><img id="brand-logo" src="logo.png" alt="Politifree"><h1>Make room for what matters.</h1><p>Politifree checks text and available media automatically. Analysis stays on your computer. Uncertain content stays visible.</p>
+<label for="allowed">Websites to leave unfiltered</label><textarea id="allowed" rows="4" placeholder="example.com" spellcheck="false"></textarea>
+<label for="blocked">Politics-focused websites to block completely</label><p class="muted">Other websites stay available. Only their political items are filtered.</p><textarea id="blocked" rows="6" spellcheck="false"></textarea>
+<button id="save">Save websites</button><span id="status" role="status"></span>
+<details><summary>Advanced</summary><h2>Media analysis</h2><p id="engine-status" role="status">Checking…</p><button id="retry-engine" class="secondary">Check connection</button><p class="muted">The local engine starts when needed and closes after 90 seconds without requests. Turning Politifree off closes it immediately. No pairing token is needed.</p>
+<h2>Audio screening</h2><p>Open Politifree on the tab you want to listen to, expand Advanced, and choose Start audio screening. Playback is delayed while speech is checked.</p>
+<h2>Coverage</h2><p>Protected streams, inaccessible images, brief video inserts and uncertain results can remain visible. Politifree can make mistakes; it does not promise a politics-free internet.</p></details>
+</main><script src="options.js"></script></body></html>

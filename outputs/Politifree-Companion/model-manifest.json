@@ -1,0 +1,66 @@
+{
+  "models/semantic/config.json": {
+    "sha256": "dc6de98193d85d4c45f96724e6dd3672b897af3f1592e02625b9a71be795887b",
+    "bytes": 1017
+  },
+  "models/semantic/MODEL_CARD.md": {
+    "sha256": "07134727f6e5a3f726ee869f7ff3b2700ca9d9f70b462746c73ac7e485eee606",
+    "bytes": 2879
+  },
+  "models/semantic/tokenizer.json": {
+    "sha256": "05402ffae6dd382a8491b1d29bfc139bec5d332662e86a026f433ce54c25c202",
+    "bytes": 8656646
+  },
+  "models/speech/config.json": {
+    "sha256": "14b1b421a90349bc551b881461426b561a874049cb9e4c4864f2ca384f6a7cc5",
+    "bytes": 2317
+  },
+  "models/speech/model.bin": {
+    "sha256": "1a5afae06a4db91c975c9a9d78be5cc110ee4ea022ad57d55492e4550e936b2a",
+    "bytes": 75537502
+  },
+  "models/speech/MODEL_CARD.md": {
+    "sha256": "1b7816626bf0548e4b71a467f4112b4592924bc818e3117f19aefcc50ce4b6aa",
+    "bytes": 1323
+  },
+  "models/speech/tokenizer.json": {
+    "sha256": "929c5252409436dce1b38a75d1abbcb5e132d170d8e324e4e04ed915fa2d22df",
+    "bytes": 2128466
+  },
+  "models/speech/vocabulary.txt": {
+    "sha256": "ff77588746d3a2595d32ab5b69ffd7b95ce2441ac57533cb66fc3eb575a115cf",
+    "bytes": 422309
+  },
+  "models/visual/BASE_MODEL_CARD.md": {
+    "sha256": "8f0e8c678e0afe5f384f3bf8a6694c1cb53c41e52f86277967b6c5354cb0f9f4",
+    "bytes": 7942
+  },
+  "models/visual/config.json": {
+    "sha256": "493ef57ff783e42d1530c91b53469b7fdf8db8a9c1408e86998fcb7899a4f495",
+    "bytes": 4524
+  },
+  "models/visual/preprocessor_config.json": {
+    "sha256": "6f638fb9401a6d6296feff533ee7efe657b787c49f954f82f5906b36ef2a1b1f",
+    "bytes": 520
+  },
+  "models/visual/README.md": {
+    "sha256": "19c2ef35fa89966c7fa7aa30666b4e3aeef4b075461626be55e6037133cc6aa4",
+    "bytes": 1404
+  },
+  "models/visual/tokenizer.json": {
+    "sha256": "f7f3b7af117d467b58374797691a6438d3e6b9e9cef800dfd5dced7f697a90cd",
+    "bytes": 2224119
+  },
+  "models/semantic/onnx/model_quantized.onnx": {
+    "sha256": "1fbf78872ceab4e8003eaa0696896008c019d5a239be734c5d6230f312ad480e",
+    "bytes": 87246195
+  },
+  "models/visual/onnx/text_model_quantized.onnx": {
+    "sha256": "73baab855d406190da9faa498cfedf65f15cf309f4cc7385b7b032e6d08e5c3a",
+    "bytes": 64504507
+  },
+  "models/visual/onnx/vision_model_quantized.onnx": {
+    "sha256": "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
+    "bytes": 89117001
+  }
+}
