@@ -377,7 +377,7 @@ def create_app(analyzer, token, extension_ids):
     def health():
         components = {"ocr": analyzer.ocr is not None, "semantic": analyzer.semantic is not None,
                       "speech": analyzer.whisper is not None, "visual": analyzer.visual is not None}
-        return {"ready": components["semantic"], "serviceAvailable": True, "components": components, "version": "0.6.14", "protocol": 2,
+        return {"ready": components["semantic"], "serviceAvailable": True, "components": components, "version": "0.6.15", "protocol": 2,
                 "features": ["ocr", "semantic", "speech", "video-frames", "visual", "context-fusion"], "localOnly": True,
                 "limits": {"clipSeconds": 120, "frameIntervalSeconds": 2, "speechOverlapSeconds": 2}}
 

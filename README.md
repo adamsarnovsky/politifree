@@ -4,7 +4,7 @@ Politifree combines a Chrome extension and a Windows companion to filter politic
 
 ## Install on Windows
 
-**[Download the complete Windows installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.0/Politifree-Setup-v0.7.0.zip)** (246 MB). It bundles the Chrome extension, companion, and analysis models. This is the standard user download; keep both parts installed.
+**[Download the complete Windows installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.1/Politifree-Setup-v0.7.1.zip)** (246 MB). It bundles the Chrome extension, companion, and analysis models. This is the standard user download; keep both parts installed.
 
 1. Extract the complete ZIP, then double-click `Install-Politifree.bat`.
 2. Setup installs the companion dependencies and connects analysis to Chrome. Initial setup requires internet, 64-bit Windows, and at least 3 GB of free disk space. It installs Python 3.12 when needed.

@@ -52,7 +52,7 @@ def write_message(stream, value):
 
 def handle(analyzer, message):
     action = message.get('action')
-    if action == 'health': return {'ready':analyzer.ready, 'serviceAvailable':True, 'version':'0.6.14', 'protocol':2}
+    if action == 'health': return {'ready':analyzer.ready, 'serviceAvailable':True, 'version':'0.6.15', 'protocol':2}
     if action == 'stop': analyzer.unload(); return {'ready':False}
     if action == 'start': analyzer.load(); return {'ready':analyzer.ready, 'protocol':2}
     if action != 'analyze': raise ValueError('Unsupported request')

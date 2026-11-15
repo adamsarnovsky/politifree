@@ -14,3 +14,10 @@ jobs:
       - run: node tests/community-background.cjs
       - run: node tests/classifier.cjs
       - run: python3 scripts/build.py
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Python discovery and repair on Windows PowerShell
+        shell: powershell
+        run: ./tests/installer.ps1

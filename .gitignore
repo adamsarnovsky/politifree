@@ -13,3 +13,6 @@ app.politifree.engine.json
 
 # Windows runtime payloads are attached to releases, not committed.
 outputs/Politifree-Setup/payload/
+
+**/.venv-repair-*/
+/tests/python installer audit spaces */

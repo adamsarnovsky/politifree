@@ -1,4 +1,4 @@
-# Politifree local engine 0.6.14 (source checkout)
+# Politifree local engine 0.6.15 (source checkout)
 
 ![Politifree](logo.png)
 
@@ -6,7 +6,7 @@ Runs OCR, semantic classification, speech transcription and sampled video-frame 
 
 ## Source checkout setup (Windows)
 
-For normal Windows use, download the [combined installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.0/Politifree-Setup-v0.7.0.zip), which includes the extension, companion, and models. This repository is a development source checkout and does **not** contain model weights. For a development source installation:
+For normal Windows use, download the [combined installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.1/Politifree-Setup-v0.7.1.zip), which includes the extension, companion, and models. This repository is a development source checkout and does **not** contain model weights. For a development source installation:
 
 1. Install 64-bit Python 3.12 and Node.js.
 2. Place the semantic, speech and visual assets described below under `models/`, matching every path and checksum in `model-manifest.json`. Source repositories are listed below. This checkout does not include an automatic model downloader; do not skip checksum validation.

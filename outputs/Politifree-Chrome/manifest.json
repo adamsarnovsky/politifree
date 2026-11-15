@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Politifree",
   "description": "Hide political content while keeping the rest of the web available.",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "icons": {
     "16": "icon16.png",
     "32": "icon32.png",

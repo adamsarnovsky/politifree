@@ -22,7 +22,7 @@ $stderrPath = Join-Path $PSScriptRoot 'runtime-stderr.log'
 $logPath = $stderrPath
 $token = (Get-Content -LiteralPath $tokenPath -Raw).Trim()
 $healthHeaders = @{Authorization="Bearer $token"}
-$expectedVersion = '0.6.14'
+$expectedVersion = '0.6.15'
 $health = $null
 try {
   $health = Invoke-RestMethod -Uri 'http://127.0.0.1:8765/health' -Headers $healthHeaders -TimeoutSec 3
