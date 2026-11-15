@@ -10,3 +10,6 @@ dist/
 pairing-token*
 app.politifree.engine.json
 .cache/
+
+# Windows runtime payloads are attached to releases, not committed.
+outputs/Politifree-Setup/payload/

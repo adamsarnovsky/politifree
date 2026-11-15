@@ -1,13 +1,21 @@
 <img src="outputs/Politifree-Chrome/logo.png" alt="Politifree" width="300">
 
-Politifree hides political content while preserving ordinary content. The Chrome extension uses local text rules and an optional Windows companion for image/OCR, semantic and sampled media analysis. This is an early community release, not a guarantee that every political item will disappear.
+Politifree combines a Chrome extension and a Windows companion to filter political content while preserving ordinary content. The companion provides local image/OCR, semantic, and sampled-media analysis. This is an early community release, not a guarantee that every political item will disappear.
 
-## Install from source
+## Install on Windows
 
-1. Download this repository as a ZIP and extract it to a permanent folder.
-2. In Chrome, open `chrome://extensions`, enable Developer mode, choose **Load unpacked**, and select `outputs/Politifree-Chrome` (the folder containing `manifest.json`).
-3. For local media analysis on Windows, follow [the companion instructions](outputs/Politifree-Companion/README.md). This requires a separate Python environment and model downloads. Text filtering works without it. Companion setup is not yet a one-click cross-platform install.
-4. After updating these files, click **Reload** in Chrome and refresh your pages.
+**[Download the complete Windows installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.0/Politifree-Setup-v0.7.0.zip)** (246 MB). It bundles the Chrome extension, companion, and analysis models. This is the standard user download; keep both parts installed.
+
+1. Extract the complete ZIP, then double-click `Install-Politifree.bat`.
+2. Setup installs the companion dependencies and connects analysis to Chrome. Initial setup requires internet, 64-bit Windows, and at least 3 GB of free disk space. It installs Python 3.12 when needed.
+3. Open `chrome://extensions`, enable Developer mode, and choose **Load unpacked**. Select `%LOCALAPPDATA%\Politifree\Chrome`.
+4. Refresh your tabs. The companion starts when needed. Politifree's On/Off switch controls both parts.
+
+For updates, rerun the combined installer, click **Reload** on the same installed extension, and refresh your tabs. Disable a duplicate copy if it was loaded from another folder. See the [Windows installation guide](outputs/Politifree-Setup/README.md) and [Politifree website](https://keystonedigital.app/politifree/).
+
+## Development source
+
+Repository ZIPs and the small extension-only release asset are for development; they do not include the complete Windows runtime and models. To inspect the extension, load `outputs/Politifree-Chrome` in Chrome. For a source-based media engine, follow the [companion development instructions](outputs/Politifree-Companion/README.md). The supported user installation is the combined bundle above.
 
 ## Report a mistake
 
@@ -28,7 +36,7 @@ node tests/classifier.cjs
 python3 scripts/build.py
 ```
 
-The build writes `dist/politifree-<version>.zip`, with `manifest.json` at the ZIP root. Extract before loading in Chrome. The companion has its own pinned Python dependencies. Do not commit environments, model weights, runtime tokens, or captured private content.
+The development build writes `dist/politifree-<version>.zip`, with `manifest.json` at the ZIP root. This extension-only artifact must not be offered as the complete Windows download. Public Windows releases must include the combined installer, companion, and models; see the release checklist in CONTRIBUTING.md. The companion has its own pinned Python dependencies. Do not commit environments, model weights, runtime tokens, or captured private content.
 
 ## Limits
 

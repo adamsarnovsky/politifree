@@ -6,7 +6,7 @@ Runs OCR, semantic classification, speech transcription and sampled video-frame 
 
 ## Source checkout setup (Windows)
 
-This repository does **not** contain model weights or a complete binary installer. The extension works in text-only mode without the companion. For a source installation:
+For normal Windows use, download the [combined installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.0/Politifree-Setup-v0.7.0.zip), which includes the extension, companion, and models. This repository is a development source checkout and does **not** contain model weights. For a development source installation:
 
 1. Install 64-bit Python 3.12 and Node.js.
 2. Place the semantic, speech and visual assets described below under `models/`, matching every path and checksum in `model-manifest.json`. Source repositories are listed below. This checkout does not include an automatic model downloader; do not skip checksum validation.
@@ -14,7 +14,7 @@ This repository does **not** contain model weights or a complete binary installe
 4. Run `powershell -NoProfile -ExecutionPolicy Bypass -File register-native.ps1 -ExtensionPath ../Politifree-Chrome` to register the current unpacked extension path for your Windows user.
 5. Reload the extension in Chrome and refresh your pages. Chrome starts and stops the engine through native messaging; do not run the legacy HTTP start script.
 
-The full installer referenced below is a separate distribution. Historical evaluation fixtures and audit captures are not part of this public source export; repository tests cover the shared-filter protocol and text regressions, not comprehensive model accuracy.
+The full installer is the standard user distribution. Historical evaluation fixtures and audit captures are not part of this public source export; repository tests cover the shared-filter protocol and text regressions, not comprehensive model accuracy.
 
 ## Managed local engine
 
