@@ -43,7 +43,38 @@
     if (game.test(subject) && mechanics.test(subject)) return 'fictional-game-guide';
     return null;
   }
-  function precise(subject, context = {}) {
+  function precise(subject, context = {}, raw = subject) {
+    // Commentary about a head of government's safety during armed conflict
+    // is public-affairs content. Neither the name nor "war" alone suffices.
+    // Check the original text: normalization removes "historical fiction".
+    const fictionalLeaderSafety = /\b(?:fiction(?:al)?|novel|movie|film|drama|character|actor|game|gaming|sci[- ]fi|alternate history|history quiz)\b/i;
+    const wartimeLeader = /\b(?:zelenskyy?|volodymyr zelenskyy?|vladimir putin|benjamin netanyahu)\b/i;
+    const armedConflict = /\b(?:war|invasion|armed conflict|airstrikes?|bombardment|missile attacks?)\b/i;
+    const figurativeConflict = /\b(?:(?:bidding|price|trade|tariff|console|browser|streaming|prank) wars?|war of words|tug[- ]of[- ]war)\b/i;
+    const leaderSafety = /\b(?:surviv(?:e|es|ed|ing|al)|safety|evacuat(?:e|es|ed|ing|ion)|bomb shelter|air[- ]raid shelter|bunker)\b|\bkeep(?:s|ing)?\b.{0,35}\bsafe\b/i;
+    const compact = text => text.toLowerCase().replace(/[\s_-]+/g, '');
+    const compactRaw = compact(raw);
+    const compactFiction = /fiction|novel|movie|film|drama|character|actor|game|gaming|scifi|alternatehistory|historyquiz|warcraft|starwars|totalwar/;
+    const compactFigurative = /(?:bidding|price|trade|tariff|console|browser|streaming|prank)war|warofwords|tugofwar/;
+    const nonliteralSafety = fictionalLeaderSafety.test(raw) || compactFiction.test(compactRaw) || compactFigurative.test(compactRaw);
+    if (!nonliteralSafety && subject.split(/[.!?\n]+/).some(sentence =>
+        wartimeLeader.test(sentence) && armedConflict.test(sentence) && !figurativeConflict.test(sentence) && leaderSafety.test(sentence))) {
+      return {political: true, score: 0.99, reason: 'public-leader-wartime-safety'};
+    }
+    // OCR can glue every word in a line together. Apply only this narrow
+    // three-signal rule to a compact view; do not retokenize general prose.
+    if (!nonliteralSafety &&
+        subject.split(/[.!?]+/).some(sentence => {
+          const joined = compact(sentence);
+          for (const leader of joined.matchAll(/zelenskyy?|vladimirputin|benjaminnetanyahu/g)) {
+            const local = joined.slice(Math.max(0, leader.index - 120), leader.index + leader[0].length + 160);
+            if (/(?:literalwar|actualwar|armedconflict|militaryinvasion|airstrikes?|bombardment|missileattacks?|airraid)/.test(local) &&
+                /surviv(?:e|es|ed|ing|al)|evacuat(?:e|es|ed|ing|ion)|(?:personal|his|her|their)safety|keep(?:s|ing)?(?:him|her|them)safe|(?:bomb|airraid)shelter/.test(local)) return true;
+          }
+          return false;
+        })) {
+      return {political: true, score: 0.99, reason: 'public-leader-wartime-safety-ocr'};
+    }
     // A political movement's leadership is political even without an election
     // keyword. Require the leadership phrase; names or "kingmaker" alone are not enough.
     if (/\b(?:MAGA|GOP|Democratic Party|Republican Party)[’']?s?\s+(?:kingmakers?|leaders?|leadership|donors?|strategists?)\b/i.test(subject)) {
@@ -350,7 +381,7 @@
     // political. Classify the post itself instead.
     // Exempt the benign phrase, never the entire item: a post can contain both.
     const subject = clean.replace(new RegExp(nonpoliticalCues.source, "gi"), "");
-    if (mode === 'precise') return precise(subject, context);
+    if (mode === 'precise') return precise(subject, context, raw);
     if (strong.some((pattern) => pattern.test(subject))) return { political: true, score: 0.92, reason: "political-context" };
     if (partyOpinion.test(subject) || (publicIssues.test(subject) && advocacy.test(subject)) || (politicalActors.test(subject) && advocacy.test(subject))) return { political: true, score: 0.9, reason: "political-advocacy" };
     if (subject.length < 24) return { political: false, score: 0, reason: "insufficient-context" };

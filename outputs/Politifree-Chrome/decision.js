@@ -26,7 +26,10 @@
     const semantic = result.score >= .58 && text.length >= 8 && !incidentalVehicleMishap && !fictionalSynopsis && !neutralMilitaryStatistic && !commercialCampaign && !communityPopularityVote && !officePoliticsAdvice && !protectedContext;
     const visual = ['image','media'].includes(kind) && result.complete && result.visualUncertain !== true &&
       (Number(result.visualScore) >= .85 || (result.score >= .85 && !communityPopularityVote && !officePoliticsAdvice && !protectedContext));
-    return {ok:true, political:!!rules || semantic || (visual && !fictionalSynopsis && !neutralMilitaryStatistic && !commercialCampaign), score:result.score, complete:result.complete,
+    const visualDecision = visual && !fictionalSynopsis && !neutralMilitaryStatistic && !commercialCampaign;
+    return {ok:true, political:!!rules || semantic || visualDecision, score:result.score, complete:result.complete,
+      decisionBranch: rules ? 'rules' : semantic ? 'semantic' : visualDecision ? 'visual' : 'none',
+      visualScore: Number.isFinite(result.visualScore) ? result.visualScore : 0, visualUncertain: result.visualUncertain === true,
       ...(['image','media'].includes(kind) ? {evidence:text.slice(0,4000)} : {})};
   }
   globalThis.PolitifreeDecision = {decide};

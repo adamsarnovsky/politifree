@@ -2,18 +2,24 @@
 // idle connections are closed so models never need a separate user switch.
 (() => {
   'use strict';
-  const HOST = 'app.politifree.engine', IDLE_MS = 90000;
+  const HOST = 'app.politifree.engine', IDLE_MS = 90000, MAX_POSTED = 2;
   let port, sequence = 0, idleTimer, retryAfter = 0, phase = 'idle';
-  const pending = new Map();
-  function stop() {
+  const pending = new Map(), waiting = [];
+  function stop(error = Error('Analysis stopped.')) {
     clearTimeout(idleTimer);
     const old = port; port = null;
-    for (const job of [...pending.values()]) job.finish(Error('Analysis stopped.'));
+    for (const job of [...pending.values(), ...waiting]) job.finish(error);
     old?.disconnect(); phase = 'idle';
   }
   function idle() {
     clearTimeout(idleTimer);
-    if (!pending.size && port) idleTimer = setTimeout(stop, IDLE_MS);
+    if (!pending.size && !waiting.length && port) idleTimer = setTimeout(stop, IDLE_MS);
+  }
+  function drain() {
+    // Bound all physical native messages, including health and start controls.
+    // With at most one active and one queued body, the host's reader can always
+    // return to the next header and observe Chrome disconnecting during work.
+    while (port && pending.size < MAX_POSTED && waiting.length) waiting.shift().start();
   }
   function connect() {
     if (port) return port;
@@ -26,9 +32,12 @@
       if (port !== current) return;
       const job = pending.get(message?.id); if (!job) return;
       if (message.ok !== true) {
-        job.finish(Error(message.error || 'Media analysis unavailable.'));
-        if (message.ready === false) { stop(); phase = 'unavailable'; retryAfter = Date.now() + 60000; }
-        else phase = 'ready';
+        if (message.ready === false) {
+          job.finish(Error(message.error || 'Media analysis unavailable.'), undefined, false);
+          stop(); phase = 'unavailable'; retryAfter = Date.now() + 60000;
+        } else {
+          phase = 'ready'; job.finish(Error(message.error || 'Media analysis unavailable.'));
+        }
         return;
       }
       phase = message.ready === false ? 'idle' : 'ready';
@@ -39,31 +48,51 @@
       if (port !== current) return;
       port = null; phase = error ? 'unavailable' : 'idle';
       if (error) retryAfter = Date.now() + 60000;
-      for (const job of [...pending.values()]) job.finish(Error('Media analysis unavailable. Run or repair the Politifree installer.'));
+      for (const job of [...pending.values(), ...waiting]) job.finish(Error('Media analysis unavailable. Run or repair the Politifree installer.'));
     });
     return current;
   }
   function request(action, payload = {}, signal) {
     signal?.throwIfAborted();
-    // The native host handles messages serially. Preserve time-sensitive audio
-    // when it would wait behind another job, instead of timing out that job too.
-    if (payload.kind === 'live-audio' && pending.size) throw Error('Media analysis is busy; audio preserved.');
+    // Preserve time-sensitive audio when it would wait behind another job.
+    if (payload.kind === 'live-audio' && (pending.size || waiting.length)) throw Error('Media analysis is busy; audio preserved.');
     const current = connect(); clearTimeout(idleTimer);
     const id = ++sequence;
-    if (action === 'analyze' || action === 'start') phase = 'loading';
     return new Promise((resolve, reject) => {
-      const abort = () => finish(signal.reason || Error('Analysis cancelled.'));
-      const timer = setTimeout(() => { finish(Error('Media analysis timed out.')); stop(); phase = 'unavailable'; retryAfter = Date.now() + 60000; }, action === 'health' ? 10000 : payload.kind === 'live-audio' ? 5000 : 180000);
-      function finish(error, result) {
-        if (!pending.has(id)) return;
-        pending.delete(id); clearTimeout(timer); signal?.removeEventListener('abort', abort);
+      let timer, done = false;
+      const job = {posted: false, finish, start};
+      const abort = () => {
+        const error = signal.reason || Error('Analysis cancelled.');
+        // A posted request still consumes a physical slot until its reply.
+        // Disconnect it rather than admitting extra work behind cancelled CPU.
+        if (job.posted) stop(error); else finish(error);
+      };
+      function finish(error, result, resume = true) {
+        if (done) return;
+        done = true; pending.delete(id);
+        const index = waiting.indexOf(job); if (index >= 0) waiting.splice(index, 1);
+        clearTimeout(timer); signal?.removeEventListener('abort', abort);
         if (error) reject(error); else resolve(result);
+        if (resume) drain();
         idle();
       }
-      pending.set(id, {finish}); signal?.addEventListener('abort', abort, {once:true});
-      try { current.postMessage({id, action, payload}); } catch (error) { finish(error); stop(); }
+      function start() {
+        if (done) return;
+        if (signal?.aborted) { finish(signal.reason || Error('Analysis cancelled.')); return; }
+        job.posted = true; pending.set(id, job);
+        if (action === 'analyze' || action === 'start') phase = 'loading';
+        // Waiting controls do not time out before they are actually submitted.
+        timer = setTimeout(() => {
+          finish(Error('Media analysis timed out.'), undefined, false);
+          stop(); phase = 'unavailable'; retryAfter = Date.now() + 60000;
+        }, action === 'health' ? 10000 : payload.kind === 'live-audio' ? 5000 : 180000);
+        try { current.postMessage({id, action, payload}); }
+        catch (error) { finish(error, undefined, false); stop(); }
+      }
+      signal?.addEventListener('abort', abort, {once:true});
+      waiting.push(job); drain();
     });
   }
-  globalThis.PolitifreeEngine = {request, stop, status: () => ({phase, pending: pending.size}),
+  globalThis.PolitifreeEngine = {request, stop, status: () => ({phase, pending: pending.size + waiting.length}),
     retry: () => { retryAfter = 0; if (phase === 'unavailable') phase = 'idle'; }};
 })();

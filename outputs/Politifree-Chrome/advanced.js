@@ -2,6 +2,22 @@
   'use strict';
   function create(refresh) {
     let settings = {}, epoch = 0, states = new WeakMap(), waiting = [], active = {text: 0, media: 0}, textCache = new Map(), frameOwners = new WeakMap();
+    const analysisAttribute = 'data-politifree-analysis';
+    function clearAnalysis(node) { node.removeAttribute?.(analysisAttribute); }
+    function recordAnalysis(node, state, result, source, task, sampleTime) {
+      if (!result?.ok || state.analysisPolitical || !node.isConnected || states.get(node) !== state) return;
+      const score = value => Number.isFinite(value) ? Math.round(Math.max(0, Math.min(1, value)) * 1000000) / 1000000 : null;
+      const record = {source, branch: ['rules','semantic','visual','none'].includes(result.decisionBranch) ? result.decisionBranch : 'unknown',
+        score: score(result.score), visualScore: score(result.visualScore), visualUncertain: result.visualUncertain === true};
+      if (task?.frame !== undefined) {
+        record.queuedBucket = Math.max(0, Math.min(Number.MAX_SAFE_INTEGER, Math.floor(task.frame)));
+        if (Number.isFinite(sampleTime)) record.sampleTime = Math.round(Math.max(0, Math.min(1e12, sampleTime)) * 1000) / 1000;
+      }
+      const value = JSON.stringify(record);
+      if (value.length > 512) return;
+      state.analysis = value; state.analysisPolitical = result.political === true;
+      node.setAttribute?.(analysisAttribute, value);
+    }
     function pixels(element) {
       if (typeof document === 'undefined' || !document.createElement) throw Error('pixels-unavailable');
       const width = element.videoWidth || element.naturalWidth, height = element.videoHeight || element.naturalHeight;
@@ -17,12 +33,16 @@
     const ignored = 'header,footer,button,input,textarea,[contenteditable]:not([contenteditable=false]),[role=textbox]';
     function priority(job) {
       const rect = job.node.getBoundingClientRect?.();
+      // Connected drawers and carousel items can have no rendered box. Their
+      // zero coordinates are not viewport evidence; retain them for reveal.
+      if (rect && rect.width === 0 && rect.height === 0) return Infinity;
       const top = rect && (rect.height || rect.width) ? rect.top : job.top - (globalThis.scrollY || 0);
       const bottom = rect && (rect.height || rect.width) ? rect.bottom : job.bottom - (globalThis.scrollY || 0);
       const viewport = globalThis.innerHeight || 800;
       if (bottom >= 0 && top <= viewport) return 0;
       return top > viewport ? top - viewport : Math.abs(bottom);
     }
+    let consecutiveText = 0;
     function drain() {
       waiting = waiting.filter(job => {
         if (!job.node.isConnected) { states.delete(job.node); return false; }
@@ -39,9 +59,11 @@
         if (active[job.lane] >= 1) { index++; continue; }
         // The native models serialize inference. Starting a thumbnail while
         // captions are waiting makes the next caption wait behind that image.
-        // Finish queued text first; media still runs once that queue drains.
-        if (job.lane === 'media' && (active.text || waiting.some(other => other.lane === 'text' && eligible(other)))) { index++; continue; }
+        // Prefer captions, but grant media a turn after four text starts so
+        // continuous caption changes cannot starve queued images or speech.
+        if (job.lane === 'media' && consecutiveText < 4 && (active.text || waiting.some(other => other.lane === 'text' && eligible(other)))) { index++; continue; }
         waiting.splice(index, 1); active[job.lane]++;
+        if (job.lane === 'text') consecutiveText++; else consecutiveText = 0;
         job.run().finally(() => { active[job.lane]--; drain(); });
       }
     }
@@ -63,6 +85,7 @@
       setTimeout(() => { scrollScheduled = false; drain(); }, 50);
     }, {passive: true});
     function reset(next) {
+      if (typeof document !== 'undefined') for (const node of document.querySelectorAll?.('[' + analysisAttribute + ']') || []) clearAnalysis(node);
       settings = next; epoch++; states = new WeakMap(); waiting = []; textCache.clear(); frameOwners = new WeakMap();
     }
     function check(node, text) {
@@ -167,13 +190,16 @@
           }
         }
       }
-      if (!tasks.length) return null;
+      if (!tasks.length) { clearAnalysis(node); states.delete(node); return null; }
       // Context changes on a recycled card must invalidate the media decision too.
       const signature = JSON.stringify([tasks, text.slice(0, 6000)]);
       let state = states.get(node);
-      if (state?.signature === signature) return state;
+      if (state?.signature === signature) { drain(); return state; }
+      clearAnalysis(node);
       if (tasks.every(task => task.kind === 'text') && textCache.has(signature)) {
-        state = {...textCache.get(signature)}; states.set(node, state); return state;
+        state = {...textCache.get(signature)}; states.set(node, state);
+        if (state.analysis) node.setAttribute?.(analysisAttribute, state.analysis);
+        return state;
       }
       state = {signature, political: false, politicalKind: null, politicalUrl: '', pending: true, unverified: false, reasons: []}; states.set(node, state);
       const uncertain = reason => { state.unverified = true; if (!state.reasons.includes(reason)) state.reasons.push(reason); };
@@ -198,6 +224,7 @@
           if (generation !== epoch || states.get(node) !== state) return;
           if (!result?.ok || !result.complete) state.unverified = true;
           if (result?.ok && result.political) { state.political = true; state.politicalKind = 'text'; state.politicalUrl = ''; }
+          recordAnalysis(node, state, result, 'text');
         } catch (_) { if (generation !== epoch || states.get(node) !== state) return; state.unverified = true; }
         pendingParts--; state.pending = pendingParts > 0; refresh(node);
       }});
@@ -209,11 +236,14 @@
           if (separateText && task.kind === 'text') continue;
           if (task.kind.startsWith('unavailable-')) { uncertain(task.kind); continue; }
           try {
+            const sampleTime = task.kind === 'pixels' && task.frame !== undefined ? pixelSources[task.index].currentTime : undefined;
             const request = task.kind === 'pixels' ? {kind:'image', data:pixels(pixelSources[task.index])} : task;
+            let source = task.kind === 'pixels' ? (task.frame !== undefined ? 'video-frame' : 'image-pixels') : task.kind === 'image' ? 'image-url' : task.kind;
             let result = await chrome.runtime.sendMessage({type: 'pf-analyze', ...request, ...(task.kind !== 'text' ? {context: text.slice(0, 6000)} : {})});
             if (generation !== epoch || !node.isConnected || states.get(node) !== state) return;
             if (!result?.ok && task.kind === 'image' && task.pixelIndex !== undefined && /resource unavailable|failed to fetch|resource too large/i.test(result?.error || '')) {
               result = await chrome.runtime.sendMessage({type:'pf-analyze',kind:'image',data:pixels(pixelSources[task.pixelIndex]),context:text.slice(0,6000)});
+              source = 'image-pixels';
             }
             if (generation !== epoch || states.get(node) !== state) return;
             if (!result?.ok || !result.complete) uncertain(result?.ok ? 'model-uncertain' : (['rate-limited','queue-busy','download-failed','analysis-timeout'].includes(result?.code) ? result.code : 'analysis-unavailable'));
@@ -222,6 +252,7 @@
             if (result?.code === 'rate-limited') { state.retryAt = Date.now() + 61000; break; }
             if (task.kind === 'pixels' && task.frame !== undefined) uncertain('video-sampled-audio-unverified');
             if (result?.evidence) evidence.push(String(result.evidence).slice(0, 4000));
+            recordAnalysis(node, state, result, source, task, sampleTime);
             if (result?.ok && result.political) { state.political = true; state.politicalKind = task.kind === 'pixels' ? 'image' : task.kind; state.politicalUrl = task.url || ''; break; }
           } catch (_) { uncertain(task.kind === 'pixels' ? 'pixels-inaccessible' : 'analysis-unavailable'); }
         }
@@ -234,6 +265,7 @@
             if (generation !== epoch || states.get(node) !== state) return;
             if (!result?.ok || !result.complete) state.unverified = true;
             if (result?.ok && result.political) { state.political = true; state.politicalKind = 'text'; }
+            recordAnalysis(node, state, result, 'fused-text');
           } catch (_) { state.unverified = true; }
         }
         if (generation !== epoch || states.get(node) !== state) return;

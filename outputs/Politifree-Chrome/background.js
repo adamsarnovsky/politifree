@@ -14,6 +14,7 @@ function cancelAnalysis() {
   analysisLifetime.abort(Error('Local analysis was stopped or its settings changed.'));
   analysisLifetime = new AbortController();
   for (const job of inferenceQueue.splice(0)) job.reject(Error('Local analysis was cancelled.'));
+  for (const job of mediaPipelines.splice(0)) { job.signal.removeEventListener('abort', job.abort); job.reject(Error('Local analysis was cancelled.')); }
   cache.clear(); analyses.clear(); downloads.clear();
 }
 let creatingOffscreen;
@@ -28,9 +29,11 @@ function publicResource(value) {
   return url.href;
 }
 function base64(bytes) {
+  // Interior chunks end on a three-byte boundary: concatenate independently
+  // encoded chunks without retaining an additional full binary string.
   let value = '';
-  for (let i = 0; i < bytes.length; i += 16384) value += String.fromCharCode(...bytes.subarray(i, i + 16384));
-  return btoa(value);
+  for (let i = 0; i < bytes.length; i += 16383) value += btoa(String.fromCharCode(...bytes.subarray(i, i + 16383)));
+  return value;
 }
 async function resource(url, limit, signal) {
   signal.throwIfAborted();
@@ -74,11 +77,19 @@ async function download(url, limit, signal) {
   for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
   return base64(bytes);
 }
-const inferenceQueue = []; let runningInference = 0;
+const inferenceQueue = []; let runningInference = 0, prioritizedStarts = 0, inferenceOrder = 0;
 function dispatchInference() {
   inferenceQueue.sort((a,b) => a.rank - b.rank);
   while (runningInference < 2 && inferenceQueue.length) {
-    const job = inferenceQueue.shift();
+    // Audio remains time-sensitive. Every fifth non-audio start serves the
+    // oldest request, so continuous captions/images cannot starve video/audio
+    // resources while captions retain their usual priority.
+    let index = 0;
+    if (prioritizedStarts >= 4 && inferenceQueue[0].rank !== 0) {
+      for (let i = 1; i < inferenceQueue.length; i++) if (inferenceQueue[i].order < inferenceQueue[index].order) index = i;
+      prioritizedStarts = 0;
+    } else if (inferenceQueue[0].rank !== 0) prioritizedStarts++;
+    const job = inferenceQueue.splice(index, 1)[0];
     if (job.signal.aborted) { job.reject(job.signal.reason); continue; }
     runningInference++;
     requestCompanion('/analyze', job.payload, job.settings, job.signal).then(job.resolve, job.reject).finally(() => { runningInference--; dispatchInference(); });
@@ -90,28 +101,62 @@ async function companion(path, payload, settings, signal) {
   if (inferenceQueue.length >= 64) throw Error('Analysis queue full; retry later.');
   return new Promise((resolve,reject) => {
     const rank = payload.kind === 'live-audio' ? 0 : payload.kind === 'text' ? 1 : payload.kind === 'image' ? 2 : 3;
-    inferenceQueue.push({payload, settings, signal, rank, resolve, reject}); dispatchInference();
+    inferenceQueue.push({payload, settings, signal, rank, order: inferenceOrder++, resolve, reject}); dispatchInference();
   });
 }
 async function requestCompanion(path, payload, settings, lifetime) {
   return PolitifreeEngine.request(path === '/analyze' ? 'analyze' : path === '/health' ? 'health' : payload.action, payload || {}, lifetime);
 }
-const mediaPipelines = []; let activeMediaPipelines = 0;
+// Reserve encoded UTF-16 payload capacity before a fetch. Large media defer
+// behind the active reservation instead of being downloaded into a backlog.
+// Direct data has already been materialized by the sender; queued direct data
+// is not included in this active-payload bound.
+const MEDIA_PAYLOAD_BUDGET = 96 * 1024 * 1024;
+const mediaPipelines = []; let activeMediaPipelines = 0, activeMediaBytes = 0;
+function mediaPayloadBytes(message) {
+  return message.data ? message.data.length * 2 : Math.ceil((message.kind === 'image' ? 10 : 32) * 1024 * 1024 / 3) * 8;
+}
 function drainMediaPipelines() {
   while (activeMediaPipelines < 2 && mediaPipelines.length) {
-    const job = mediaPipelines.shift();
-    if (job.signal.aborted) { job.reject(job.signal.reason); continue; }
-    activeMediaPipelines++;
-    analyzePayload(job.message, job.settings, job.signal, job.sender).then(job.resolve, job.reject).finally(() => { activeMediaPipelines--; drainMediaPipelines(); });
+    const job = mediaPipelines[0];
+    if (job.signal.aborted) { mediaPipelines.shift(); job.signal.removeEventListener('abort', job.abort); job.reject(job.signal.reason); continue; }
+    if (activeMediaBytes + job.bytes > MEDIA_PAYLOAD_BUDGET) break;
+    mediaPipelines.shift(); job.signal.removeEventListener('abort', job.abort);
+    activeMediaPipelines++; activeMediaBytes += job.bytes;
+    analyzePayload(job.message, job.settings, job.signal, job.sender).then(job.resolve, job.reject).finally(() => { activeMediaPipelines--; activeMediaBytes -= job.bytes; drainMediaPipelines(); });
   }
 }
 async function analyze(message, settings, signal, sender) {
   if (message.kind === 'text' || message.kind === 'live-audio') return analyzePayload(message, settings, signal, sender);
   signal.throwIfAborted();
+  if (message.data && message.data.length > 45000000) throw Error('Invalid data');
   if (mediaPipelines.length >= 32) throw Error('Media analysis busy; retry later.');
   // Acquire the budget before downloading. Otherwise fast downloads can leave
   // dozens of large encoded videos waiting in the inference queue.
-  return new Promise((resolve, reject) => { mediaPipelines.push({message, settings, signal, sender, resolve, reject}); drainMediaPipelines(); });
+  return new Promise((resolve, reject) => {
+    const job = {message, settings, signal, sender, resolve, reject, bytes: mediaPayloadBytes(message)};
+    job.abort = () => {
+      const index = mediaPipelines.indexOf(job);
+      if (index >= 0) { mediaPipelines.splice(index, 1); reject(signal.reason); drainMediaPipelines(); }
+    };
+    mediaPipelines.push(job); signal.addEventListener('abort', job.abort, {once:true}); drainMediaPipelines();
+  });
+}
+// Hash an ordered, length-framed list of bounded chunks. No full JSON or UTF-8
+// copy of a base64 movie is needed. Metadata remains exact (including captions,
+// visual options and kind); schema/version prevent cross-protocol cache reuse.
+async function payloadIdentity(payload, signal) {
+  const encoder = new TextEncoder();
+  const hash = async value => {
+    signal.throwIfAborted();
+    const digest = await crypto.subtle.digest('SHA-256', encoder.encode(value));
+    signal.throwIfAborted();
+    return Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('');
+  };
+  const {data, ...metadata} = payload;
+  const chunks = [], chunkSize = 256 * 1024;
+  if (data !== undefined) for (let offset = 0; offset < data.length; offset += chunkSize) chunks.push(await hash(data.slice(offset, offset + chunkSize)));
+  return hash(JSON.stringify({schema:1, protocol:2, version:chrome.runtime.getManifest?.().version || '', metadata, length:data?.length, chunks}));
 }
 async function analyzePayload(message, settings, signal, sender) {
   signal.throwIfAborted();
@@ -126,9 +171,7 @@ async function analyzePayload(message, settings, signal, sender) {
     payload.data = message.data;
   } else payload.data = await resource(message.url, message.kind === 'image' ? 10 * 1024 * 1024 : 32 * 1024 * 1024, signal);
   signal.throwIfAborted();
-  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(payload)));
-  signal.throwIfAborted();
-  const key = Array.from(new Uint8Array(digest), x => x.toString(16).padStart(2, '0')).join('');
+  const key = await payloadIdentity(payload, signal);
   let result;
   if (cache.has(key)) {
     result = cache.get(key); cache.delete(key); cache.set(key, result);

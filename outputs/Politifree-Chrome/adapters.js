@@ -2,6 +2,19 @@
 (() => {
 'use strict';
 function create({host, safeUnit, ignoredSelector, knownOwners, rumbleVideoPath, redditUnitSelector, commentSelector, unitSelector}) {
+  function facebookPositionedMediaUnit(seed) {
+    if (!seed.matches('video,audio,img,[aria-label*="video player" i]')) return null;
+    // Captionless feed videos can sit more than 20 wrappers below their post.
+    // A positioned item with exactly one post menu identifies the complete card
+    // without relying on wrapper depth or climbing into the shared feed.
+    const post = seed.closest('[aria-posinset]');
+    if (!post || !/^[1-9]\d*$/.test(post.getAttribute('aria-posinset') || '') ||
+        post.matches('main,body,html,[role=main],[role=feed]') ||
+        post.querySelector('[aria-posinset]') ||
+        post.querySelectorAll('[aria-label^="Actions for this post"]').length !== 1 ||
+        !post.querySelector('video,audio') || !safeUnit(post)) return null;
+    return post;
+  }
   function facebookUnit(seed) {
     for (let p = seed.parentElement, depth = 0; p && depth < 14; p = p.parentElement, depth++) {
       if (p.matches('body,main,[role=feed]')) break;
@@ -63,6 +76,8 @@ function create({host, safeUnit, ignoredSelector, knownOwners, rumbleVideoPath, 
       if (short && safeUnit(short)) return short;
     }
     if (host === 'facebook.com' && !seed.closest(commentSelector)) {
+      const positionedMedia = facebookPositionedMediaUnit(seed);
+      if (positionedMedia) { knownOwners.add(positionedMedia); return positionedMedia; }
       const post = seed.closest('article,[role=article],[data-pagelet*="FeedUnit"]');
       if (post && safeUnit(post)) return post;
       const message = seed.closest('[data-ad-preview=message],[data-ad-rendering-role="story_message"]');

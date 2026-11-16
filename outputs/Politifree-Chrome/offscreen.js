@@ -10,8 +10,10 @@ function wav(samples, rate) {
   text(36, 'data'); view.setUint32(40, samples.length * 2, true);
   samples.forEach((v, i) => view.setInt16(44 + i * 2, Math.round(Math.max(-1, Math.min(1, v)) * 32767), true));
   let data = ''; const arr = new Uint8Array(bytes);
-  for (let i = 0; i < arr.length; i += 16384) data += String.fromCharCode(...arr.subarray(i, i + 16384));
-  return btoa(data);
+  // Three-byte boundaries preserve exactly the same WAV/base64 bytes without
+  // keeping a second full-size binary string during encoding.
+  for (let i = 0; i < arr.length; i += 16383) data += btoa(String.fromCharCode(...arr.subarray(i, i + 16383)));
+  return data;
 }
 async function stop() {
   captureEpoch++;
@@ -42,8 +44,6 @@ async function release(session) {
 async function process(session, samples) {
   const previous = session.overlap || new Float32Array(0);
   session.overlap = samples.slice(-Math.round(session.context.sampleRate * 2));
-  const analysis = new Float32Array(previous.length + samples.length);
-  analysis.set(previous); analysis.set(samples, previous.length);
   if (session !== current) return;
   const sequence = session.sequence++;
   if (session.busy >= 2) {
@@ -51,6 +51,10 @@ async function process(session, samples) {
     await release(session); return;
   }
   session.busy++;
+  // Busy chunks still update the exact overlap above, but do not allocate an
+  // analysis buffer that would never be submitted to the model.
+  const analysis = new Float32Array(previous.length + samples.length);
+  analysis.set(previous); analysis.set(samples, previous.length);
   try {
     const response = await chrome.runtime.sendMessage({type: 'pf-live-audio', data: wav(analysis, session.context.sampleRate)});
     if (session !== current) return;

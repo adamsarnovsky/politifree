@@ -1,20 +1,8 @@
-# Politifree local engine 0.6.15 (source checkout)
+# Politifree local engine 0.6.17
 
 ![Politifree](logo.png)
 
 Runs OCR, semantic classification, speech transcription and sampled video-frame OCR and visual scene classification on your computer. The production connection uses Chrome native messaging. It does not save uploaded content or send it to a cloud service. Initial setup downloads Python packages; model weights are included in the full companion package.
-
-## Source checkout setup (Windows)
-
-For normal Windows use, download the [combined installer](https://github.com/adamsarnovsky/politifree/releases/download/v0.7.1/Politifree-Setup-v0.7.1.zip), which includes the extension, companion, and models. This repository is a development source checkout and does **not** contain model weights. For a development source installation:
-
-1. Install 64-bit Python 3.12 and Node.js.
-2. Place the semantic, speech and visual assets described below under `models/`, matching every path and checksum in `model-manifest.json`. Source repositories are listed below. This checkout does not include an automatic model downloader; do not skip checksum validation.
-3. Run `powershell -NoProfile -ExecutionPolicy Bypass -File setup.ps1` from this folder. Setup stops if any model is absent or damaged.
-4. Run `powershell -NoProfile -ExecutionPolicy Bypass -File register-native.ps1 -ExtensionPath ../Politifree-Chrome` to register the current unpacked extension path for your Windows user.
-5. Reload the extension in Chrome and refresh your pages. Chrome starts and stops the engine through native messaging; do not run the legacy HTTP start script.
-
-The full installer is the standard user distribution. Historical evaluation fixtures and audit captures are not part of this public source export; repository tests cover the shared-filter protocol and text regressions, not comprehensive model accuracy.
 
 ## Managed local engine
 
@@ -42,6 +30,41 @@ normal installer. Do not start that API for a regular installation.
 - Protected video, closed shadow DOM, inaccessible canvases/frames and logins remain browser constraints. This cannot bypass authentication or guarantee removal of all politics. OCR, visual and semantic models can make mistakes.
 - CPU analysis is bounded and cached in memory. Text-only browsing does not load OCR, vision or speech. Exact repeated audio windows reuse transcripts; repeated images and frames reuse context-aware results without reducing video sampling coverage. Memory depends on the models in use. No raw content is logged. Restarting clears in-memory caches.
 
+## Resource management
+
+Version 0.6.17 adds an in-memory LRU of at most 512 exact transformed text
+windows. It retains all three hypothesis scores in their original order and
+clears on unload. Changed windows still run inference; failures are not cached.
+Image and audio hashing avoids redundant full-buffer copies. OCR reuses
+unchanged-resolution pixels, and fully buffered native messages avoid another
+bytearray and bytes copy. Fragmented reads preserve the existing behavior.
+These changes do not change models, thresholds, coverage, or installed model
+size. Performance gains depend on reuse; total model RAM remains significant.
+
+The native connection uses a small controller and one inference worker. The
+controller's health check does not import model libraries. Idle shutdown and
+Off release the worker process. A worker above 1.5 GiB resident memory can be
+recycled after a completed job, at least five minutes and eight analysis jobs
+after startup. This is a recovery threshold, not a hard limit on inference peaks.
+Model caches are lost on recycle, so recycling is deliberately infrequent.
+
+The bundled visual reference vectors are derived from the same pinned text
+encoder and labels. Runtime checks bind them to those inputs; a missing/stale
+artifact falls back to the original encoder. Rebuild with
+`python build_visual_references.py` after changing the visual model or labels.
+The installer verifies the derived artifact with the other model checksums.
+
+OCR evidence is cached independently of the caption, then fused with each new
+caption. Video frames use decoded pixels without a PNG round trip. Speech uses
+the same 30-second windows and two-second overlap in a reusable buffer. OCR
+session spinning stops immediately after inference. No model, detection threshold, image resolution,
+frame sampling or speech-window coverage is reduced by these optimizations.
+
+Queues apply backpressure rather than declaring skipped media safe. Chrome
+limits total native requests in flight to two. Already-materialized media in
+browser messages and temporary decoder/inference allocations still consume
+memory; the queue budget is not a whole-browser memory cap.
+
 ## Model and library sources
 
 - Semantic model: [MoritzLaurer/deberta-v3-xsmall-zeroshot-v1.1-all-33](https://huggingface.co/MoritzLaurer/deberta-v3-xsmall-zeroshot-v1.1-all-33), quantized ONNX, MIT.
@@ -62,7 +85,6 @@ Video samples every two seconds and at keyframes, up to two minutes. Very brief 
 
 Visual weights: https://huggingface.co/Xenova/clip-vit-base-patch32 at revision 4c1807b705b1d015fb032789cc4d221b23025a6f. Model card included in models/visual/README.md. All bundled model hashes are recorded in model-manifest.json and verified during setup and startup. No repository Python code is executed.
 
-## Evaluation
+## Repeatable evaluation
 
-Public regression checks are described in the repository root README. The broader local release suite is not bundled in this source export. Do not interpret its passing results as universal filtering accuracy.
-
+With Node.js installed and the sibling Politifree-Chrome folder present, run `.venv/Scripts/python.exe evaluate.py`. This uses evaluation/cases.json: 40 labelled text cases, 8 OCR fixtures, 4 generated clips, 2 speech fixtures and 2 sourced photographs. It passes model responses through the extension's production decision logic and reports political misses, false removals, unverified visible content and analysis latency. These are constructed English regression examples, not a representative accuracy estimate. No private browsing content is included. SOURCES.md records photograph attribution and licenses.

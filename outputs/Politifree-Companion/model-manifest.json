@@ -62,5 +62,9 @@
   "models/visual/onnx/vision_model_quantized.onnx": {
     "sha256": "583fd1110a514667812fee7d684952aaf82a99b959760c8d7dca7e0ab9839299",
     "bytes": 89117001
+  },
+  "models/visual/reference-vectors.json": {
+    "sha256": "01eb5452d0b2e7328f3932c8b39290270f381e4a032f337d232bce2d8036e14a",
+    "bytes": 242544
   }
 }

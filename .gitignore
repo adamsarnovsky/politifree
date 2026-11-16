@@ -16,3 +16,4 @@ outputs/Politifree-Setup/payload/
 
 **/.venv-repair-*/
 /tests/python installer audit spaces */
+/work/native-resource-fixture/

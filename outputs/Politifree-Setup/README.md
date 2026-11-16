@@ -1,8 +1,8 @@
 # Politifree Windows setup
 
-Extension 0.7.1 · Companion 0.6.15
+Extension 0.7.5 · Companion 0.6.17
 
-Package: `Politifree-Setup-v0.7.1.zip`
+Package: `Politifree-Setup-v0.7.5.zip`
 
 ![Politifree](logo.png)
 

@@ -569,6 +569,7 @@
     if (settings.enabled && !matchesDomain(settings.allowedDomains) && politicsFocusedDomain() && !continued) installSiteBlock();
     new MutationObserver(records => {
       syncGate();
+      const changedOwners = new Set(), changedRoots = new Set();
       for (const record of records) {
         const element = record.target.nodeType === Node.ELEMENT_NODE ? record.target : record.target.parentElement;
         if (!element || element.closest('#politifree-site-block,.politifree-placeholder')) continue;
@@ -578,9 +579,19 @@
           backgroundImages.set(element, value);
         }
         const owner = boundary(element.closest(candidateSelector) || element);
-        if (owner) { processed.delete(owner); owner.removeAttribute('data-politifree-reviewed'); queue(owner); }
-        if (record.removedNodes.length && !owner) queue(element);
-        for (const added of record.addedNodes) if (added.nodeType === Node.ELEMENT_NODE && !added.matches('#politifree-site-block,.politifree-placeholder')) queue(added);
+        if (owner) { changedOwners.add(owner); changedRoots.add(owner); }
+        if (record.removedNodes.length && !owner) changedRoots.add(element);
+        for (const added of record.addedNodes) if (added.nodeType === Node.ELEMENT_NODE && !added.matches('#politifree-site-block,.politifree-placeholder')) changedRoots.add(added);
+      }
+      // Invalidate every changed owner, including recycled cards and caption,
+      // alt/src, track and background changes. Collapse only overlapping scans,
+      // after collecting the whole delivery, so each owner gets its immediate
+      // social-card check once rather than once per text/attribute record.
+      for (const owner of changedOwners) { processed.delete(owner); owner.removeAttribute('data-politifree-reviewed'); }
+      for (const root of changedRoots) {
+        let covered = false;
+        for (let parent = root.parentNode; parent; parent = parent.parentNode) if (changedRoots.has(parent)) { covered = true; break; }
+        if (!covered) queue(root);
       }
       if (sitePanel) syncSiteBlock();
     }).observe(document.documentElement, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['href','srcset','title','alt','aria-label','aria-description','aria-describedby','data-caption','data-transcript','data-description','data-full-text','data-e2e-caption','post-title','subreddit-name','subreddit-prefixed-name','post-type','promoted','id','src','poster','aria-hidden','style','data-politifree-ready','data-politifree-gate'] });

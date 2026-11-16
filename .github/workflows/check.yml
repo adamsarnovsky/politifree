@@ -13,7 +13,26 @@ jobs:
       - run: node tests/community.cjs
       - run: node tests/community-background.cjs
       - run: node tests/classifier.cjs
+      - run: node tests/native-admission.cjs
+      - run: node tests/demand-resources.cjs
+      - run: node tests/hidden-media-admission.cjs
+      - run: node tests/facebook-video-boundary.cjs
+      - run: node tests/wartime-leader-safety.cjs
+      - run: node tests/analysis-provenance.cjs
+      - run: node tests/gaming-war-context.cjs
+      - run: python3 tests/native-resources.py
+      - run: python3 tests/native-buffer.py
       - run: python3 scripts/build.py
+  companion-parity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install numpy==2.5.3 Pillow==12.3.0
+      - name: Verify optimization parity without model downloads
+        run: python tests/companion-performance.py
   windows-installer:
     runs-on: windows-latest
     steps:
@@ -21,3 +40,7 @@ jobs:
       - name: Check Python discovery and repair on Windows PowerShell
         shell: powershell
         run: ./tests/installer.ps1
+      - name: Check native worker lifecycle and bounded admission
+        run: python tests/native-resources.py
+      - name: Check native buffered and fragmented reads
+        run: python tests/native-buffer.py
